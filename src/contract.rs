@@ -6,10 +6,13 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE};
+use crate::state::{CoreConstants, CONSTCTX};
+use crate::state::BETAMOUNTS;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:counter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const OWNER_ADDR: &str = "sei1taltj5we9lm4qexa9tvafm6k458vsggme7ksyl";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -18,17 +21,27 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let state = State {
-        count: msg.count,
-        owner: info.sender.clone(),
+    if info.sender != OWNER_ADDR {
+        return Err(ContractError::Unauthorized {});
+    }
+    let const_context = CoreConstants {
+        betax: msg.betax,
+        game_vault: msg.game_vault,
+        odd: msg.odd,
+        odd2: msg.odd2,
     };
+    let mut bet_amounts: Vec<i16> = Vec::new();
+    bet_amounts.push(msg.first_bet);
+    bet_amounts.push(msg.second_bet);
+    bet_amounts.push(msg.third_bet);
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
+    CONSTCTX.save(deps.storage, &const_context)?;
+    BETAMOUNTS.save(deps.storage, &bet_amounts)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute("count", msg.count.to_string()))
+        .add_attribute("owner", info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -41,7 +54,27 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        ExecuteMsg::BetHead { betOpt } => bet_head(deps, info, betOpt),
+        ExecuteMsg::BetTail { betOpt } => bet_tail(deps, info, betOpt),
     }
+}
+
+pub fn bet_head(deps: DepsMut, info: MessageInfo, bet_opt: i16) -> Result<Response, ContractError> {
+    let bet_amounts = BETAMOUNTS.load(deps.storage)?;
+    // check if bet option is available for system storage
+    // total number of bet options will be betAmounts.lengh + 1, final options is betting all by default
+    if bet_opt > bet_amounts.len() as i16 {
+        return Err(ContractError::InvalidBetOption {});
+    }
+
+
+    Ok(Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("owner", info.sender))
+}
+
+pub fn bet_tail(deps: DepsMut, info: MessageInfo, betOpt: i16) -> Result<Response, ContractError> {
+
 }
 
 pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {

@@ -10,4 +10,15 @@ pub struct State {
     pub owner: Addr,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CoreConstants {
+    pub betax: i32,
+    pub game_vault: Addr,
+    pub odd: i32,
+    pub odd2: i32,
+}
+
 pub const STATE: Item<State> = Item::new("state");
+
+pub const CONSTCTX: Item<CoreConstants> = Item::new("const_ctx");
+pub const BETAMOUNTS: Item<Vec<i16>> = Item::new("bet_amounts");
